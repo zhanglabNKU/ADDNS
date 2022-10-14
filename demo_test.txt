@@ -1,0 +1,2 @@
+./source_images/ct1.gif ./source_images/mr1.gif
+./source_images/ct2.gif ./source_images/mr2.gif
