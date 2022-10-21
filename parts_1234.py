@@ -2,28 +2,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class two_conv(nn.Module):
 
+    def __init__(self, in_channel, out_channel):
+        super(two_conv, self).__init__()
 
-
-class double_conv(nn.Module):
-
-    def __init__(self, in_ch, out_ch):
-        super(double_conv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),
-
-            nn.BatchNorm2d(out_ch),
-
+        self.conv  = nn.Sequential(
+            nn.Conv2d(in_channel, out_channel, 3, padding=1),
+            nn.BatchNorm2d(out_channel),
             nn.ReLU(inplace=True),
-            #nn.Hardswish(),
-
-
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
-
-            nn.BatchNorm2d(out_ch),
-
+            nn.Conv2d(out_channel, out_channel, 3, padding=1),
+            nn.BatchNorm2d(out_channel),
             nn.ReLU(inplace=True)
-            #nn.Hardswish()
         )
 
     def forward(self, x):
@@ -31,10 +21,10 @@ class double_conv(nn.Module):
         return x
 
 
-class inconv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(inconv, self).__init__()
-        self.conv = double_conv(in_ch, out_ch)
+class conv(nn.Module):
+    def __init__(self, in_channel, out_channel):
+        super(conv, self).__init__()
+        self.conv = two_conv(in_channel, out_channel)
 
     def forward(self, x):
         x = self.conv(x)
@@ -42,11 +32,11 @@ class inconv(nn.Module):
 
 
 class down(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_channel, out_channel):
         super(down, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
-            double_conv(in_ch, out_ch)
+            two_conv(in_channel, out_channel)
         )
 
     def forward(self, x):
@@ -55,43 +45,40 @@ class down(nn.Module):
 
 
 class up(nn.Module):
-    def __init__(self, in_ch, out_ch, bilinear=True):
+    def __init__(self, in_channel, out_channel, bilinear=True):
         super(up, self).__init__()
-
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
+            self.up = nn.ConvTranspose2d(in_channel // 2, in_channel // 2, 2, stride=2)
 
-        self.conv = double_conv(in_ch, out_ch)
+        self.conv = two_conv(in_channel, out_channel)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
 
-        # input is CHW
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
 
-        # print(diffY, diffX)
         x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2))
 
-        x = torch.cat([x2, x1], dim=1)  # 按照列拼接
+        x = torch.cat([x2, x1], dim=1)
         x = self.conv(x)
         return x
 
 
-class outconv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(outconv, self).__init__()
-        self.conv = nn.Conv2d(in_ch, out_ch, 1)
+class out(nn.Module):
+    def __init__(self, in_channel, out_channel,):
+        super(out, self).__init__()
+        self.conv = nn.Conv2d(in_channel, out_channel, 1)
 
     def forward(self, x):
         x = self.conv(x)
         return x
 
 
-##DenseNet
+##Dense
 class _DenseLayer(nn.Sequential):
     def __init__(self, num_input_features, growth_rate):
         super(_DenseLayer, self).__init__()
@@ -199,11 +186,9 @@ class dense_up(nn.Module):
     def forward(self, x1, x2):
         x1 = self.up(x1)
 
-        # input is CHW
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
 
-        # print(diffY, diffX)
         x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2))
 

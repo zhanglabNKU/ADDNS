@@ -30,22 +30,16 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.imgs)
 
-# If the pixel value is below the threshold, this pixel is the background. 
-# Otherwise, it's not.
+# the background
 BG_THRESHOLD = 17.0/256
+def bg(x1,x2):
+    bg_mask = ((x1[0][0] <= BG_THRESHOLD) & (x2[0][0] <= BG_THRESHOLD))
+    fg_mask = ((x1[0][0]> BG_THRESHOLD) | (x2[0][0] > BG_THRESHOLD))
+    return bg_mask,fg_mask
 
-def get_bg_mask(ct, mr):
-    bg_mask = ((ct <= BG_THRESHOLD) & (mr <= BG_THRESHOLD))
-    return bg_mask
-
-def get_fg_mask(ct, mr):
-    fg_mask = ((ct > BG_THRESHOLD) | (mr > BG_THRESHOLD))
-    return fg_mask
-
-def scale_image(img, fg_mask = None,bg_mask= None):
-    if fg_mask is None:
-        fg_mask = torch.ones(img.shape).type(torch.ByteTensor)
-    fg_vals = torch.masked_select(img, fg_mask)
+def scale(image, fg = None):
+    img = image[0][0]
+    fg_vals = torch.masked_select(img, fg)
     minv = fg_vals.min()
     maxv = fg_vals.max()
     img = (img - minv)
@@ -54,10 +48,7 @@ def scale_image(img, fg_mask = None,bg_mask= None):
     img[img < 0] = 0
     return 1-img
 
-def post_image(ct, mr, fused, chg_bg = True):
-    bg_mask = get_bg_mask(ct, mr)
-    fg_mask = get_fg_mask(ct, mr)
-    r = scale_image(fused, fg_mask,bg_mask)
+def chg(r, bg_mask, chg_bg = True):
     if chg_bg:
         r[bg_mask] = 0
     return r

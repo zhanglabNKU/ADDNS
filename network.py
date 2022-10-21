@@ -5,6 +5,7 @@ class addns(nn.Module):
     def __init__(self, n_channels, n_classes):
         super(addns, self).__init__()
 
+        ## the framework without the sharing mechanism
         # self.inc_gen = indense(2, 2, 64, 32)
         # self.down1_gen = dense_down(2, 32, 64, 64)
         # self.down2_gen = dense_down(2, 64, 64, 128)
@@ -28,9 +29,9 @@ class addns(nn.Module):
         # self.outc = outconv(32, n_classes)
         # self.relu = nn.ReLU(inplace=True)
 
-        # self.denseblock1 = indense(2, 2, 64, 32)
+
         self.inc_gen = indense(2, 2, 64, 32)
-        self.trans1 = Transition(130,32) #nn.Conv2d(130,32,kernel_size=3, stride=1, padding=1,bias=False)
+        self.trans1 = Transition(130,32)
         self.trans12 = Transition(130,32)
         #
         self.down1_gen = dense_down(2, 32, 64, 64)
@@ -65,9 +66,9 @@ class addns(nn.Module):
         self.up4_gen = dense_up(2, 64, 64, 32)
         self.trans9 = Transition(192, 32)
         self.trans92 = Transition(192, 32)
-        self.outc_gen = outconv(32, 1)
+        self.outc_gen = out(32, 1)
 
-        self.inc = inconv(n_channels, 192)
+        self.inc = conv(n_channels, 192)
         # self.trans9 = Transition(192, 32)
         self.down1 = down(32, 192+64)
         # self.trans8 = Transition(192, 32)
@@ -85,49 +86,46 @@ class addns(nn.Module):
         # self.trans2 = Transition(160, 32)
         self.up4 = up(96, 130)
         # self.trans1 = Transition(130, 32)
-        self.outc = outconv(32, n_classes)
+        self.outc = out(32, n_classes)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x1,x2):
-
-        # # generate network
         x11 = self.inc_gen(torch.cat((x1,x2), dim = 1))
+        x_bg,x_fg = bg(x1,x2)
         x11 = self.trans1(x11)
-        # #
-        # x1 = self.pool(x1)
+
         x22 = self.down1_gen(x11)
         x22 = self.trans2(x22)
-        # #
-        # x2 = self.pool(x2)
+
         x3 = self.down2_gen(x22)
         x3 = self.trans3(x3)
-        #
-        # x3 = self.pool(x3)
+
         x4 = self.down3_gen(x3)
         x4 = self.trans4(x4)
-        # #
-        # x4 = self.pool(x4)
+
         x5 = self.down4_gen(x4)
         x5 = self.trans5(x5)
-        # # #
+
         x = self.up1_gen(x5, x4)
         x6 = self.trans6(x)
-        # #
+
         x = self.up2_gen(x6, x3)
         x7 = self.trans7(x)
-        # #
+
         x = self.up3_gen(x7, x22)
         x8 = self.trans8(x)
+
         x = self.up4_gen(x8, x11)
         x9 = self.trans9(x)
         x = self.outc_gen(x9)
-        # #
+
         fr = F.sigmoid(x)
+        r = scale(fr,x_fg)
+        r = chg(r, x_bg)
 
         x11 = self.inc(fr)
         x11 = self.trans92(x11)
-        # x1 = self.trans9(x1)
-        #
+
         x22 = self.down1(x11)
         x22 = self.trans82(x22)
         #
@@ -151,69 +149,7 @@ class addns(nn.Module):
 
         x = self.outc(x)
 
-        return post_image(x1[0][0], x2[0][0], fr[0][0], chg_bg=True), F.sigmoid(x)
-
-
-
-        # # generate network
-        # x1 = self.denseblock1(x1)
-        # x1 = self.trans1(x1)
-        #
-        # x2 = self.down1_gen(x1)
-        # x2 = self.trans2(x2)
-        #
-        # x3 = self.down2_gen(x2)
-        # x3 = self.trans3(x3)
-        #
-        # x4 = self.down3_gen(x3)
-        # x4 = self.trans4(x4)
-        #
-        # x5 = self.down4_gen(x4)
-        # x5 = self.trans5(x5)
-        #
-        # x = self.up1_gen(x5, x4)
-        # x6 = self.trans6(x)
-        #
-        # x = self.up2_gen(x6, x3)
-        # x7 = self.trans7(x)
-        #
-        # x = self.up3_gen(x7, x2)
-        # x8 = self.trans8(x)
-        # x = self.up4_gen(x8, x1)
-        # x9 = self.trans9(x)
-        # x = self.outc_gen(x9)
-        #
-        # fr = F.sigmoid(x)
-        #
-        # # rebuild network
-        # ##共享权值 可全部共享，也可部分共享
-        # x1 = self.inc(fr)
-        # # x1 = self.trans9(x1)
-        #
-        # x2 = self.down1(x1)
-        # # x2 = self.trans8(x2)
-        #
-        # x3 = self.down2(x2)
-        # # x3 = self.trans7(x3)
-        #
-        # x4 = self.down3(x3)
-        # # x4 = self.trans6(x4)
-        #
-        # x5 = self.down4(x4)
-        # # x5 = self.trans5(x5)
-        # x = self.up1(x5, x4)
-        # x= self.trans4(x)
-        #
-        # x = self.up2(x, x3)
-        # x = self.trans3(x)
-        # x = self.up3(x, x2)
-        # x = self.trans2(x)
-        # x = self.up4(x, x1)
-        # x = self.trans1(x)
-        #
-        # x = self.outc(x)
-        # return fr, F.sigmoid(x)
-
+        return r, F.sigmoid(x)
 
 
 
