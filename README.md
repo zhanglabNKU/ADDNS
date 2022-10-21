@@ -14,7 +14,7 @@ opencv-python
 Usage
 -------
         # Clone the code
-         git clone 
+         git clone https://github.com/zhanglabNKU/ADDNS.git
          
          # activate the virtual enviroment before running our code
          conda activate enviroment
