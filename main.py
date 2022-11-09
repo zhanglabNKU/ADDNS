@@ -40,22 +40,6 @@ def worker_init_fn(worker_id):
     GLOBAL_WORKER_ID = worker_id
     set_seed(GLOBAL_SEED + worker_id)
 
-def kl_divergence(p, q):
-    p = p.reshape(-1, )
-    q = q.reshape(-1, )
-    p = F.softmax(p, dim = 0)
-    q = F.softmax(q, dim = 0)
-    s1 = torch.sum(p * torch.log(p / q))
-    return s1
-
-def total_loss(x1, x2, img_fusion, outputs):
-
-    loss = criterion(outputs[:, 0, :, :], x1) + criterion(outputs[:, 1, :, :], x2)
-    kl_loss = 5 * (kl_divergence(x1, img_fusion) +kl_divergence(x2, img_fusion))
-    loss = loss + kl_loss
-    #ssim_loss = ssim(img_fusion, x1) + ssim(img_fusion, x2)
-
-    return loss
 
 def train(trainloader,):
     start_time = time.time()
