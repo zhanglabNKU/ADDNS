@@ -1,5 +1,4 @@
 
-<<<<<<< HEAD
 Code for paper "ADDNS: An Asymmetric Dual Deep Network with Sharing Mechanism for Medical Image Fusion of CT and MR-T2".
 
 Requirements
@@ -21,5 +20,5 @@ Usage
 
         # our main code  
          python main.py 
-=======
->>>>>>> 3e7976af7cbd431d7fcc086f9582f6a352030f99
+
+
