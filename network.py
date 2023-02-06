@@ -137,15 +137,16 @@ class addns(nn.Module):
         #
         x5 = self.down4(x4)
         x5 = self.trans52(x5)
+
         x = self.up1(x5, x4)
-        x= self.trans4(x)
+        x= self.trans42(x)
         #
         x = self.up2(x, x3)
-        x = self.trans3(x)
+        x = self.trans32(x)
         x = self.up3(x, x22)
-        x = self.trans2(x)
+        x = self.trans22(x)
         x = self.up4(x, x11)
-        x = self.trans1(x)
+        x = self.trans12(x)
 
         x = self.outc(x)
 

@@ -1,6 +1,6 @@
 # ADDNS
 
-Code for paper "Asymmetric Dual Deep Network with Sharing Mechanism for Medical Image Fusion from CT and MR-T2".
+Code for paper "ADDNS: An Asymmetric Dual Deep Network with Sharing Mechanism for Medical Image Fusion of CT and MR-T2".
 
 Requirements
 ---------
@@ -14,7 +14,7 @@ opencv-python
 Usage
 -------
         # Clone the code
-         git clone 
+         git clone https://github.com/zhanglabNKU/ADDNS.git
          
          # activate the virtual enviroment before running our code
          conda activate enviroment

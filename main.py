@@ -40,22 +40,80 @@ def worker_init_fn(worker_id):
     GLOBAL_WORKER_ID = worker_id
     set_seed(GLOBAL_SEED + worker_id)
 
-def kl_divergence(p, q):
-    p = p.reshape(-1, )
-    q = q.reshape(-1, )
-    p = F.softmax(p, dim = 0)
-    q = F.softmax(q, dim = 0)
-    s1 = torch.sum(p * torch.log(p / q))
+
+
+def mi(img1,img2):
+    img1_ = np.array(img1.cpu().detach().numpy())
+    img2_ = np.array(img2.cpu().detach().numpy())
+    # img1_ = np.resize(img1_, (img1_.shape[0], img1_.shape[1]))
+    img2_ = np.reshape(img2_, -1)
+    img1_ = np.reshape(img1_, -1)
+    mutual_infor = metrics.mutual_info_score(img1_, img2_)
+    return mutual_infor
+
+def ws(img1,img2):
+    p = img1.reshape(-1, )
+    q = img2.reshape(-1, )
+    s1 = wasserstein_distance(p.cpu().detach().numpy(), q.cpu().detach().numpy())
+    # s = torch.from_numpy(s1).cuda()
     return s1
 
-def total_loss(x1, x2, img_fusion, outputs):
+class PerceptualLoss():
+    def contentFunc(self):
+        conv_3_3_layer = 14
+        cnn = models.vgg16(pretrained=True).features
+        cnn = cnn.cuda()
+        model = nn.Sequential()
+        model = model.cuda()
+        for i, layer in enumerate(list(cnn)):
+            model.add_module(str(i), layer)
+            if i == conv_3_3_layer:
+                break
+        return model
 
-    loss = criterion(outputs[:, 0, :, :], x1) + criterion(outputs[:, 1, :, :], x2)
-    kl_loss = 5 * (kl_divergence(x1, img_fusion) +kl_divergence(x2, img_fusion))
-    loss = loss + kl_loss
-    #ssim_loss = ssim(img_fusion, x1) + ssim(img_fusion, x2)
+    def __init__(self, loss):
+        self.criterion = loss
+        self.contentFunc = self.contentFunc()
+
+    def get_loss(self, fakeIm, realIm):
+
+        c = torch.cat((fakeIm, fakeIm,fakeIm), dim=0)
+        img1 = torch.cat((c, c,c), dim=1)
+        # print(img1.shape)
+
+        e = torch.cat((realIm, realIm,realIm), dim=0)
+        img2 = torch.cat((e, e,e), dim=1)
+        # print(img2.shape)
+
+
+        # img1 = np.stack((fakeIm,) * 3, axis=-1)
+        # img2 = np.stack((realIm,) * 3, axis=-1)
+        f_fake = self.contentFunc.forward(img1)
+        f_real = self.contentFunc.forward(img2)
+        f_real_no_grad = f_real.detach()
+        loss = self.criterion(f_fake, f_real_no_grad)
+        return loss
+
+
+def perceptual_loss(img1,img2):
+    content_loss = PerceptualLoss(torch.nn.MSELoss())
+    loss_PerceptualLoss = content_loss.get_loss(img1, img2)
+    return loss_PerceptualLoss
+
+
+def calc_loss(ct, mr, img_fusion, outputs):
+
+    loss = criterion(outputs[:, 0, :, :], ct) + criterion(outputs[:, 1, :, :], mr)
+    ws_loss = (ws(img_fusion, mr)+ws(img_fusion, mr))/2
+
+    # pixel_loss = (criterion(img_fusion, ct)+criterion(img_fusion, mr))/2
+    # mi_loss = (mi(img_fusion, mr)+mi(img_fusion, mr))/2
+    # ssim_loss = (tcssim(img_fusion, ct, 11, False) + tcssim(img_fusion, mr, 11, False))[0]
+    percep_loss = (perceptual_loss(img_fusion, mr)+perceptual_loss(img_fusion, mr))/2
+    loss = loss+ ws_loss+ percep_loss#pixel_loss +ssim_loss##+ mi_loss
 
     return loss
+
 
 def train(trainloader,):
     start_time = time.time()
@@ -81,7 +139,7 @@ def train(trainloader,):
 
             img_fusion, outputs = net(torch.cat((ct, mr), dim=1))
 
-            loss = total_loss(ct, mr, img_fusion, outputs)
+            loss = calc_loss(ct, mr, img_fusion, outputs)
 
             loss.backward()
             optimizer.step()
@@ -149,6 +207,7 @@ def test(net, data_path,txt_path):
 
         with torch.no_grad():
             fusion_path = data_path + str(os.path.basename(words[0])[-5:-4]) + '.png'
+            # fusion_path = data_path + str(os.path.basename(words[0])[:-4]) + '.png'
             print(fusion_path)
             io.imsave(fusion_path, np.array(img_fusion * 255, dtype='uint8'))
 
@@ -190,7 +249,11 @@ if __name__ == "__main__":
         time1 = time.time()
         net = addns(1, 2)
         net.to(device)
+
         data_path = './result/'
+        model_path = './model/best_fusion_model_ws_epoch11_Mon_Nov_21_19_53_35_2022_checkpoint.pt'
+         # txt_path= "./test_557.txt"
+
         txt_path= "./demo_test.txt"
 
         ##different sharing mechanism
@@ -199,7 +262,7 @@ if __name__ == "__main__":
         # net.load_state_dict(./sharing_mechanism/9876/best_fusion_model_kl0_checkpoint.pt'),map_location = device)
         # net.load_state_dict(/./sharing_mechanism/34567/best_fusion_model_kl0_checkpoint.pt'),map_location = device)
         ## our fusion model
-        net.load_state_dict(torch.load('./model/best_fusion_model_kl0_checkpoint.pt', map_location=device))
+        net.load_state_dict(torch.load(model_path, map_location=device))
         
         net.eval()
         test(net, data_path,txt_path)
