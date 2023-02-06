@@ -40,6 +40,7 @@ def worker_init_fn(worker_id):
     GLOBAL_WORKER_ID = worker_id
     set_seed(GLOBAL_SEED + worker_id)
 
+<<<<<<< HEAD
 
 
 def mi(img1,img2):
@@ -113,6 +114,8 @@ def calc_loss(ct, mr, img_fusion, outputs):
     loss = loss+ ws_loss+ percep_loss#pixel_loss +ssim_loss##+ mi_loss
 
     return loss
+=======
+>>>>>>> 3e7976af7cbd431d7fcc086f9582f6a352030f99
 
 
 def train(trainloader,):
